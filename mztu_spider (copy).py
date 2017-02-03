@@ -2,6 +2,7 @@
 import os
 import requests
 from bs4 import BeautifulSoup
+from Download import request
 
 
 class mzitu(object):
@@ -11,7 +12,7 @@ class mzitu(object):
         self.root_url = "http://www.mzitu.com/all"
 
     def get_all_url(self):
-        start_html = requests.get(self.root_url, headers=self.headers).text
+        start_html = request.get(self.root_url, 3).text
         soup = BeautifulSoup(start_html, "lxml")
         contents_list = soup.find('div', class_='all').find_all('a')
         info_list = []
@@ -32,7 +33,7 @@ class mzitu(object):
         pic_url_list=[]
         for num in range(1, int(max_num)+1):
         	new_pic_url=pic_url+'/'+str(num)
-        	new_pic_html=requests.get(new_pic_url, headers=self.headers).text
+        	new_pic_html=request.get(new_pic_url, 3).text
         	soup=BeautifulSoup(new_pic_html, "lxml")
         	real_pic_url=soup.find('img')['src']
         	# print real_pic_url
@@ -44,8 +45,8 @@ class mzitu(object):
     		os.mkdir(pic_info[1])
     	
     	for pic_url in pic_url_list:
-    		img_html=requests.get(pic_url, headers=self.headers)
-    		img_name=pic_url[-9:-4]
+    		img_html=request.get(pic_url, 3)
+    		img_name=pic_url[-6:-4]
     		f=open(pic_info[1]+'/'+ img_name+'.jpg', 'ab')
     		f.write(img_html.content)
     		f.close()
