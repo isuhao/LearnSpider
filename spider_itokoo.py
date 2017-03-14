@@ -7,6 +7,8 @@
 import os
 import requests
 from bs4 import BeautifulSoup
+from Download import request
+
 
 class itokoo(object):
     def __init__(self):
@@ -21,56 +23,89 @@ class itokoo(object):
             return: 
                 pic_link_list: [list] each link of beauties
         """
-        #巨坑!!! content能自动识别网站编码，优于text
+        # 巨坑!!! content能自动识别网站编码，优于text
         html = requests.get(self.root_url).content
 
-        soup = BeautifulSoup(html,'lxml')
-        pic_info_list=soup.find('div',class_="f14 mb10").find_all('a')
-        pic_link_list=[] #构造列表存储图片链接
+        soup = BeautifulSoup(html, 'lxml')
+        pic_info_list = soup.find('div', class_="f14 mb10").find_all('a')
+        pic_link_list = []  # 构造列表存储图片链接
         for pic_info in pic_info_list:
             pic_link_list.append(pic_info['href'])
         for index in range(len(pic_link_list)):
-            with open('test.txt','a') as f:
+            with open('test.txt', 'a') as f:
                 f.write(pic_link_list[index])
                 f.write('\n')
         return pic_link_list
 
-    def get_each_pic_info(self,pic_link):
+    def get_each_pic_info(self, pic_link):
         """scrawl each beauti's download link, code, description and thumbnails
-		   argument: 
+                   argument: 
             pic_link: [str] picture link
            return:
             download_stuff: [dict] the dictionary has 2 elements: 
                             download link and code
-            description: [list] a list who has title, picture size, unzip code,
-                        download postion  and so on infomation
+            new_info: [str] a string, which is html code and include title, size, 
+                            pic numbers, and unzip code.
             thumnails: [list] a list who has the thumnails of the beauty
-    	"""
-        html=requests.get(pic_link).content
-        
+        """
+        html = request.get(pic_link, 3).content
+
         # soup=BeautifulSoup(html,'lxml')
         # title=soup.find('h1')
         # title_content=title.get_text().encode('utf-8')
         # # print len(title_content)
         # title_content=title_content.split(']')[1]+']' #delete useless info
 
-        soup=BeautifulSoup(html,'lxml')
-        info=soup.find(id="read_tpc")
-        print type(info)
-        print info
-        print info.find(class_="down").get('href')
+        # soup=BeautifulSoup(html,'lxml')
+        # info=soup.find(id="read_tpc")
+        # print type(info)
+        # print info
+        # print info.find(class_="down").get('href')
+        soup = BeautifulSoup(html, 'lxml')
 
-        
+        # create a folder to store info and pictures
+        folder_name = soup.title.string.split(' - ')[0].replace('/', '_')
+        if not os.path.exists(folder_name):
+            os.mkdir(folder_name)
+        else:
+            return
+        # store info at local
+        info = soup.find('font', size="2").encode('utf-8')  # encode the tag
+        new_info = info.replace('http://www.itokoo.com/', 'piaoliangmm')
+        with open(folder_name + '/' + 'name.txt', 'wb') as f:
+            f.write(new_info)
 
+        # find all thumbnails url
+        thumbnails = soup.find_all('span', class_="f12")
+        for thumnail in thumbnails:
+            src_url = thumnail.find('img').get('src')
+            img_html = requests.get(src_url)
+            pic_name = src_url.split('/')[-1].split('?')[0]
+            with open(folder_name + '/' + pic_name, 'ab') as f:
+                f.write(img_html.content)
 
+        # find download link and code
+        download_links = soup.find_all('a', class_="down")
+        for link in download_links:
+            if link.string.encode('utf-8').find('百度') != -1:
+                download_link = link.get('href')
+                download_code = link.next_sibling
+        download_stuff = {'link': download_link, 'code': download_code}
+        with open(folder_name + '/' + 'download.txt', 'wb') as f:
+            f.write(download_stuff['link'] + '\t' +
+                    download_stuff['code'].encode('utf-8'))
+            f.write('\n')
 
 
 if __name__ == '__main__':
     # step1: 得到主页面上，所有套图的文件名和链接
     # step2: 进入每个套图链接，得到文字说明、预览图、下载链接
     # step3: 保存资料到本地磁盘
-    itokoo=itokoo()
-    pic_link_list=itokoo.get_all_pic_link()
-    itokoo.get_each_pic_info(pic_link_list[0])
-
-    
+    itokoo = itokoo()
+    pic_link_list = itokoo.get_all_pic_link()
+    num = 0
+    print "There are %d links need to be processed in total" % len(pic_link_list)
+    for pic_link in pic_link_list:
+        num += 1
+        print 'processing with number: %d ' % num
+        itokoo.get_each_pic_info(pic_link)
