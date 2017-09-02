@@ -14,7 +14,7 @@ class itokoo(object):
     def __init__(self):
         self.headers = {
             'User-Agent': "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1"}
-        self.root_url = "http://www.itokoo.com/read.php?tid=31396"
+        self.root_url = "http://www.itokoo.com/read.php?tid=31364"
 
     def get_all_pic_link(self):
         """ 得到主页面上，所有套图的文件名和链接
@@ -49,40 +49,15 @@ class itokoo(object):
             thumnails: [list] a list who has the thumnails of the beauty
         """
         html = request.get(pic_link, 3).content
-
-        # soup=BeautifulSoup(html,'lxml')
-        # title=soup.find('h1')
-        # title_content=title.get_text().encode('utf-8')
-        # # print len(title_content)
-        # title_content=title_content.split(']')[1]+']' #delete useless info
-
-        # soup=BeautifulSoup(html,'lxml')
-        # info=soup.find(id="read_tpc")
-        # print type(info)
-        # print info
-        # print info.find(class_="down").get('href')
         soup = BeautifulSoup(html, 'lxml')
+ 
 
-        # create a folder to store info and pictures
-        folder_name = soup.title.string.split(' - ')[0].replace('/', '_')
-        if not os.path.exists(folder_name):
-            os.mkdir(folder_name)
-        else:
-            return
         # store info at local
-        info = soup.find('font', size="2").encode('utf-8')  # encode the tag
+        try:
+            info = soup.find('font', size="2").encode('utf-8')  # encode the tag
+        except:
+            return
         new_info = info.replace('http://www.itokoo.com/', 'piaoliangmm')
-        with open(folder_name + '/' + 'name.txt', 'wb') as f:
-            f.write(new_info)
-
-        # find all thumbnails url
-        thumbnails = soup.find_all('span', class_="f12")
-        for thumnail in thumbnails[:2]:
-            src_url = thumnail.find('img').get('src')
-            img_html = requests.get(src_url)
-            pic_name = src_url.split('/')[-1].split('?')[0]
-            with open(folder_name + '/' + pic_name, 'ab') as f:
-                f.write(img_html.content)
 
         # find download link and code
         download_links = soup.find_all('a', class_="down")
@@ -90,7 +65,32 @@ class itokoo(object):
             if link.string.encode('utf-8').find('百度') != -1:
                 download_link = link.get('href')
                 download_code = link.next_sibling
-        download_stuff = {'link': download_link, 'code': download_code}
+        try:
+            download_stuff = {'link': download_link, 'code': download_code}
+        except:
+            return
+        
+        # create a folder to store info and pictures
+        folder_name = soup.title.string.split(' - ')[0].replace('/', '_')       
+        if not os.path.exists(folder_name):
+            os.mkdir(folder_name)
+        else:
+            return
+
+        with open(folder_name + '/' + 'name.txt', 'wb') as f:
+            f.write(new_info)
+
+        # find all thumbnails url
+        thumbnails = soup.find_all('span', class_="f12")
+        for thumnail in thumbnails:
+            src_url = thumnail.find('img').get('src')
+            img_html = requests.get(src_url)
+            pic_name = src_url.split('/')[-1].split('?')[0]
+            with open(folder_name + '/' + pic_name, 'ab') as f:
+                f.write(img_html.content)
+            with open(ensemble_pic + '/' + pic_name , 'ab') as f:
+                f.write(img_html.content)
+
         with open('download.txt', 'ab') as f:
             f.write(folder_name.encode('utf-8') + '\t' + download_stuff['link'] + '\t' +
                     download_stuff['code'].encode('utf-8'))
@@ -106,7 +106,16 @@ if __name__ == '__main__':
     pic_link_list = itokoo.get_all_pic_link()
     num = 0
     print "There are %d links need to be processed in total" % len(pic_link_list)
+    
+   #create a folder to store all picutres
+    ensemble_pic='pic'
+    if os.path.exists(ensemble_pic):
+        os.removedirs(ensemble_pic)
+    os.mkdir(ensemble_pic)
+
     for pic_link in pic_link_list:
         num += 1
         print 'processing with number: %d ' % num
         itokoo.get_each_pic_info(pic_link)
+
+   
